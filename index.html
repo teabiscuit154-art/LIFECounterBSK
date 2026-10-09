@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1220">
+<title>MTG Life Counter</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#0b1220;color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.app{max-width:900px;margin:auto;padding:10px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}
+h1{font-size:20px;margin:0}
+.actions{display:flex;gap:5px}
+.small{background:#334155;border-radius:9px;padding:8px 9px;font-size:12px}
+.players{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.player{background:#1e293b;border-radius:18px;padding:10px;display:flex;flex-direction:column;min-height:390px}
+.player-name{text-align:center;font-size:15px;font-weight:700}
+.life{font-size:82px;font-weight:800;text-align:center;line-height:1;margin:25px 0 18px}
+.life.dead{color:#ef4444}
+.life-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+.life-btn{height:68px;border-radius:14px;font-size:38px;font-weight:700;background:#334155}
+.minus{background:#7f1d1d}.plus{background:#166534}
+.counters{margin-top:12px;padding-top:10px;border-top:1px solid #334155}
+.counter-title{text-align:center;color:#cbd5e1;font-size:12px;margin-bottom:5px}
+.poison{display:flex;justify-content:center;align-items:center;gap:10px}
+.poison button{width:44px;height:38px;border-radius:10px;background:#334155;font-size:23px}
+.poison-value{font-size:25px;font-weight:800;min-width:35px;text-align:center}
+.poison-danger{color:#f87171}
+.panel{margin-top:9px;background:#1e293b;border-radius:18px;padding:11px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.panel-head h2{font-size:15px;margin:0}
+.dice-area{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;text-align:center}
+.die{background:#0f172a;border-radius:14px;padding:10px}
+.die-name{font-size:12px;color:#94a3b8}
+.die-value{font-size:38px;font-weight:800;margin:2px 0}
+.dice-vs{color:#64748b;font-weight:700}
+.roll{width:100%;margin-top:8px;background:#2563eb;border-radius:12px;padding:11px;font-weight:700}
+.dice-result{text-align:center;font-size:13px;color:#cbd5e1;margin-top:7px;min-height:18px}
+.log{max-height:280px;overflow:auto}
+.log-empty{text-align:center;color:#64748b;padding:18px}
+.log-item{display:grid;grid-template-columns:62px 55px 1fr 42px;gap:5px;align-items:center;padding:8px 3px;border-bottom:1px solid #334155;font-size:12px}
+.log-item:last-child{border:0}
+.log-time{color:#94a3b8}.delta.plus{color:#4ade80}.delta.minus{color:#f87171}.after{text-align:right;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.modal.show{display:flex}
+.sheet{width:min(100%,520px);background:#1e293b;border-radius:22px 22px 0 0;padding:15px 15px 22px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sheet-head strong{font-size:17px}
+.close{background:#334155;width:38px;height:38px;border-radius:50%;font-size:22px}
+.display{background:#0f172a;border-radius:13px;padding:11px;text-align:right;font-size:34px;font-weight:800;margin-bottom:10px}
+.reasons{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}
+.reasons button{white-space:nowrap;background:#334155;border-radius:9px;padding:7px 9px;font-size:11px}
+.reasons button.selected{background:#2563eb}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.key{height:56px;border-radius:12px;background:#334155;font-size:23px;font-weight:700}
+.key.clear{background:#7f1d1d}.key.confirm{background:#166534;grid-column:1/4}
+@media(max-width:600px){.player{min-height:345px}.life{font-size:70px;margin:23px 0 16px}.life-btn{height:62px}}
+@media(orientation:landscape) and (max-height:600px){.player{min-height:285px}.life{font-size:58px;margin:10px 0}.life-btn{height:52px}.counters{margin-top:7px;padding-top:6px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<h1>MTG Life Counter</h1>
+<div class="actions">
+<button class="small" id="undoBtn">↶ 戻す</button>
+<button class="small" id="exportBtn">ログ出力</button>
+<button class="small" id="resetBtn">リセット</button>
+</div>
+</header>
+
+<div class="players" id="players"></div>
+
+<section class="panel">
+<div class="panel-head"><h2>🎲 先攻・後攻ダイス</h2><button class="small" id="clearDice">クリア</button></div>
+<div class="dice-area">
+<div class="die"><div class="die-name">Player1</div><div class="die-value" id="die1">−</div></div>
+<div class="dice-vs">VS</div>
+<div class="die"><div class="die-name">Player2</div><div class="die-value" id="die2">−</div></div>
+</div>
+<button class="roll" id="rollBtn">🎲 6面ダイスを振る</button>
+<div class="dice-result" id="diceResult"></div>
+</section>
+
+<section class="panel">
+<div class="panel-head"><h2>📜 ライフログ</h2><button class="small" id="clearLog">ログ消去</button></div>
+<div class="log" id="log"></div>
+</section>
+</div>
+
+<div class="modal" id="modal">
+<div class="sheet">
+<div class="sheet-head"><strong id="modalTitle">ライフ変更</strong><button class="close" id="closeModal">×</button></div>
+<div class="display" id="display">0</div>
+<div class="reasons" id="reasons">
+<button data-reason="通常" class="selected">通常</button>
+<button data-reason="戦闘ダメージ">戦闘ダメージ</button>
+<button data-reason="火力">火力</button>
+<button data-reason="絆魂">絆魂</button>
+<button data-reason="効果">効果</button>
+</div>
+<div class="keypad">
+<button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+<button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+<button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+<button class="key clear" data-k="clear">C</button><button class="key" data-k="0">0</button><button class="key" data-k="back">←</button>
+<button class="key confirm" data-k="confirm">確定</button>
+</div>
+</div>
+</div>
+
+<script>
+const state={
+ players:[
+  {name:"Player1",life:20,poison:0},
+  {name:"Player2",life:20,poison:0}
+ ],
+ logs:[],
+ history:[],
+ first:null,
+ second:null
+};
+let activePlayer=0, changeType=1, changeTarget="life", input="", reason="通常";
+
+const $=id=>document.getElementById(id);
+
+function esc(s){
+ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function render(){
+ $("players").innerHTML=state.players.map((p,i)=>`
+ <section class="player">
+  <div class="player-name">${esc(p.name)}</div>
+  <div class="life ${p.life<=0?"dead":""}">${p.life}</div>
+  <div class="life-buttons">
+   <button class="life-btn minus" onclick="openCounter(${i},'life',-1)">−</button>
+   <button class="life-btn plus" onclick="openCounter(${i},'life',1)">＋</button>
+  </div>
+  <div class="counters">
+   <div class="counter-title">☠ 毒カウンター</div>
+   <div class="poison">
+    <button onclick="openCounter(${i},'poison',-1)">−</button>
+    <div class="poison-value ${p.poison>=10?"poison-danger":""}">${p.poison}</div>
+    <button onclick="openCounter(${i},'poison',1)">＋</button>
+   </div>
+  </div>
+ </section>`).join("");
+ renderLog();
+}
+
+function renderLog(){
+ if(!state.logs.length){
+  $("log").innerHTML='<div class="log-empty">まだ記録はありません</div>';return;
+ }
+ $("log").innerHTML=state.logs.slice().reverse().map(x=>{
+  const delta=x.delta>0?"+"+x.delta:String(x.delta);
+  const shown=x.type==="poison"?"☠"+delta:delta;
+  const cls=x.delta>0?"plus":"minus";
+  return `<div class="log-item">
+   <span class="log-time">${x.time}</span>
+   <strong>${esc(x.player)}</strong>
+   <span class="delta ${cls}">${shown} ${esc(x.reason)}</span>
+   <span class="after">${x.after}</span>
+  </div>`;
+ }).join("");
+}
+
+function snapshot(){
+ return {
+  players:state.players.map(p=>({...p})),
+  logs:state.logs.map(x=>({...x})),
+  first:state.first,
+  second:state.second
+ };
+}
+
+function restore(s){
+ state.players=s.players.map(p=>({...p}));
+ state.logs=s.logs.map(x=>({...x}));
+ state.first=s.first;
+ state.second=s.second;
+ render();
+}
+
+function now(){
+ return new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}
+
+function openCounter(i,target,type){
+ activePlayer=i;changeTarget=target;changeType=type;input="";
+ reason=target==="poison"?"毒カウンター":"通常";
+ const label=target==="poison"?"毒カウンター":"ライフ";
+ $("modalTitle").textContent=`${state.players[i].name}：${label}${type>0?"増加":"減少"}`;
+ $("display").textContent=(type>0?"+":"−")+"0";
+ document.querySelectorAll("#reasons button").forEach(b=>{
+   b.classList.toggle("selected",b.dataset.reason===reason);
+ });
+ $("modal").classList.add("show");
+ if(target==="poison"){
+   document.querySelectorAll("#reasons button").forEach(b=>b.classList.toggle("selected",b.dataset.reason==="毒カウンター"));
+ }
+}
+
+function updateDisplay(){
+ $("display").textContent=(changeType>0?"+":"−")+(input||"0");
+}
+
+document.querySelectorAll(".key").forEach(b=>b.onclick=()=>{
+ const k=b.dataset.k;
+ if(k==="confirm"){confirmCounter();return}
+ if(k==="clear"){input="";updateDisplay();return}
+ if(k==="back"){input=input.slice(0,-1);updateDisplay();return}
+ if(input.length<4){input+=k;input=input.replace(/^0+(?=\d)/,"");updateDisplay();}
+});
+
+document.querySelectorAll("#reasons button").forEach(b=>b.onclick=()=>{
+ if(changeTarget==="poison" && b.dataset.reason!=="毒カウンター")return;
+ reason=b.dataset.reason;
+ document.querySelectorAll("#reasons button").forEach(x=>x.classList.remove("selected"));
+ b.classList.add("selected");
+});
+
+function confirmCounter(){
+ const amount=Number(input);if(!amount)return;
+ state.history.push(snapshot());
+ const delta=amount*changeType;
+ const p=state.players[activePlayer];
+ if(changeTarget==="life"){
+   p.life+=delta;
+   state.logs.push({type:"life",player:p.name,delta,after:p.life,reason,time:now()});
+ }else{
+   p.poison=Math.max(0,p.poison+delta);
+   state.logs.push({type:"poison",player:p.name,delta,after:p.poison,reason:"毒カウンター",time:now()});
+ }
+ $("modal").classList.remove("show");render();
+}
+
+$("closeModal").onclick=()=>$("modal").classList.remove("show");
+$("modal").onclick=e=>{if(e.target===$("modal"))$("modal").classList.remove("show")};
+
+$("undoBtn").onclick=()=>{
+ const s=state.history.pop();
+ if(s)restore(s);
+};
+
+$("resetBtn").onclick=()=>{
+ if(!confirm("ライフ・毒カウンター・ログ・先攻後攻をすべてリセットしますか？"))return;
+ state.players.forEach(p=>{p.life=20;p.poison=0});
+ state.logs=[];state.history=[];state.first=null;state.second=null;
+ $("die1").textContent="−";$("die2").textContent="−";$("diceResult").textContent="";
+ render();
+};
+
+$("clearLog").onclick=()=>{
+ if(confirm("ライフログを消去しますか？")){state.logs=[];renderLog();}
+};
+
+function roll(){
+ const a=Math.floor(Math.random()*6)+1;
+ const b=Math.floor(Math.random()*6)+1;
+ $("die1").textContent=a;$("die2").textContent=b;
+ if(a>b){
+   state.first="Player1";state.second="Player2";
+   $("diceResult").textContent="Player1 が先攻";
+ }else if(b>a){
+   state.first="Player2";state.second="Player1";
+   $("diceResult").textContent="Player2 が先攻";
+ }else{
+   state.first=null;state.second=null;
+   $("diceResult").textContent="同値！ 振り直してください";
+ }
+}
+
+$("rollBtn").onclick=roll;
+
+$("clearDice").onclick=()=>{
+ $("die1").textContent="−";$("die2").textContent="−";$("diceResult").textContent="";
+ state.first=null;state.second=null;
+};
+
+$("exportBtn").onclick=()=>{
+ let lines=[];
+ lines.push("MTG Life Counter - 対戦ログ");
+ lines.push("");
+ lines.push("【対戦情報】");
+ lines.push("初期ライフ: 20");
+ if(state.first && state.second){
+   lines.push("先行: "+state.first);
+   lines.push("後攻: "+state.second);
+ }else{
+   lines.push("先行: 未決定");
+   lines.push("後攻: 未決定");
+ }
+ lines.push("");
+ lines.push("【最終状態】");
+ state.players.forEach(p=>lines.push(`${p.name}: ライフ ${p.life} / 毒 ${p.poison}`));
+ lines.push("");
+ lines.push("【ライフ・毒カウンターログ】");
+ if(!state.logs.length)lines.push("記録なし");
+ state.logs.forEach(x=>{
+   const delta=x.delta>0?"+"+x.delta:String(x.delta);
+   const prefix=x.type==="poison"?"☠":"";
+   lines.push(`${x.player}:${prefix}${delta} | 結果 ${x.after} | ${x.reason}`);
+ });
+ const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/plain;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download=`MTG_Life_Log_${new Date().toISOString().slice(0,10)}.txt`;
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+render();
+</script>
+</body>
+</html>
